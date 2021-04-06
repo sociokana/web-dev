@@ -1,0 +1,196 @@
+% !TEX encoding = UTF-8 Unicode
+% ソシオロゴス投稿者用 LaTeXテンプレートです。
+% 最終的な作業はソシオロゴス編集委員が行うため、ご提出いただく際のレイアウトと最終バージョンの見た目が異なることがあります。ご了承ください。
+%
+% 作　　成 2018/04/08
+% 最終更新 2019/03/28
+% contact: slogos@l.u-tokyo.ac.jp
+% web     : http://www.l.u-tokyo.ac.jp/~slogos/
+% 
+% (u)pLaTeX2e環境が必要です。
+% sociologos.clsのオプションは次の通りです。
+% === uplatex : upLaTeXの場合、uplatexオプションを指定して下さい。
+% === jfont   : overleafなど日本語フォントがデフォルトで埋め込まれない環境の場合、指定してください（ipaフォントが指定されます）。
+
+\documentclass[]{sociologos} 
+\begin{document}
+
+\title{『ソシオロゴス』\LaTeX クラスファイルマニュアル\OLDfootnote{2018年4月8日作成、2019年3月28日最終更新。}} %論文の和文タイトル
+
+\subtitle{投稿者のためのガイド} %論文の和文副題。無い場合は空欄にしてください。
+
+\author{ソシオロゴス\quad 編集委員会} %著者名。苗字と名前の間に全角スペースを挿入してください。
+
+\authorinfo{そしろおごす　へんしゅういいんかい}{東京大学人文社会系研究科}{slogos@l.u-tokyo.ac.jp}
+%\authorinfoii{ふたりめの　ちょしゃ}{東京大学人文社会系研究科}{hoge@l.u-tokyo.ac.jp}
+% 著者が複数名いる場合。\authorinfoii, iii, iv, vで5人まで対応。
+
+\englishtitle{A Guideline of the \LaTeX\ Class File for \emph{SOCIOLOGOS}} %英文タイトル
+
+\englishsubtitle{A Brief Instruction} %英文副題。無い場合空欄にしてください。
+
+\englishauthor{SOCIOLOGOS, Editorial Committee of} %著者の英文名
+
+\reviewer{査読者1}{査読者2} %査読者。
+
+
+%抄録
+\abst{『ソシオロゴス』は、新しい社会学を希求する人々の冒険の媒体として1977年に創刊されました。以来、公開の場において投稿者と査読者が直接顔をあわせて査読を進めていくというスタイルによって、新しいパラダイムにもとづく議論、大胆な冒険を行うための開かれた学術誌を目指して参りました。現在でも、『ソシオロゴス』は創刊以来の精神を受け継ぎ、特に新進気鋭の研究者に対して、意欲的で発見に満ちた論文を発表する場を与えることにより、新しい社会学を発信していく媒体として、その先頭を走り続けています。}
+
+\englishabst{Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin nec ipsum et tellus bibendum eleifend nec ut neque. Duis dapibus rhoncus risus eget suscipit. Suspendisse pharetra magna sed justo congue, et porta massa dictum. Nunc suscipit aliquam justo, vitae lacinia nisi porttitor id. Vestibulum a aliquet massa. Morbi ut ligula nec sem congue lacinia. Donec porta eleifend venenatis. Aenean venenatis nulla a consequat volutpat. Mauris congue venenatis pharetra. Proin sed eros vitae magna pharetra auctor ac id nibh. Nunc congue porttitor vehicula. Aenean in dui id nunc dignissim feugiat. Nullam in nunc sagittis, accumsan nisl vel, efficitur ligula. Praesent luctus, dui vitae fermentum fermentum, eros magna maximus tellus, id lobortis libero ante ut odio.}
+
+\maketitle
+
+\section{はじめに}
+
+ほげ
+
+\section{テンプレートの基本的な構造}
+
+ほげ
+
+\subsection{基本的な注意事項}
+ほげ
+
+\subsection{構成}
+ほげ
+\subsection{利用可能なsociologos.clsのオプション}
+ほげ
+\subsection{既宣言パッケージ一覧}
+ほげ
+\subsection{和文タイトル・和文抄録の作成}
+ほげ
+\section{本文}
+\subsection{長い引用(quotation, quote)}
+ほげ
+\subsection{注(endnote)}
+ほげ\footnote{脚注}
+\subsection{表の挿入}
+\subsubsection{表の規程}
+
+位置、線の引き方、など
+
+\subsubsection{表の挿入}
+ほげ
+\subsection{図の挿入}
+ほげ
+\subsubsection{図の規程}
+解像度、フォーマット、
+
+\subsubsection{図の挿入}
+ほげ
+\subsection{文末}
+ほげ
+\subsubsection{謝辞・付記}
+ほげ
+\subsubsection{注}
+ほげ
+\subsubsection{参考文献リストの作成}
+ほげ
+\subsubsection{著者情報（所属・メール・査読者）の作成}
+ほげ
+\subsubsection{英文タイトル・英文抄録の作成}
+ほげ
+
+
+\begin{figure}[!htbp]
+\centering
+\includegraphics[width=0.6\textwidth]{example-image}\\
+\figcap{出典：「概要」（XXXX省，20XX，\url{http://www.l.u-tokyo.ac.jp/~slogos/}）を基に筆者作成．}
+\figcap{注：国家試験の受験には，…… 必要であるため，0000年度からのデータを掲載している．}
+\caption{画像挿入の例}
+%図キャプションは真ん中に位置しますが、長くなると（複数行をまたがると）自動的に左揃えになります。captionsetupでsinglelinecheck=falseやjustification=raggedrightオプションなどを用いることによっていろいろ強制できます。
+\end{figure}
+
+\subsection{まんなか3}
+ほげ
+\begin{table}[htbp]
+\centering
+\caption{国家試験合格者推移（グループ別）}
+\footnotesize
+\begin{tabular}{cccccccc} \toprule
+& \multicolumn{2}{c}{グループA}  & \multicolumn{2}{c}{グループB} & \multicolumn{3}{c}{合計} \\ \cmidrule(lr){2-3} \cmidrule(lr){4-5} \cmidrule(lr){6-8}
+& 合格者数 & 合格率 & 合格者数 & 合格率 & 受験者数 & 合格者数 & 合格率\\ \midrule
+0001年度 & 00 & 00.0\% & 0 & 000\% & 00 & 00 & 00.0\%\\
+0002年度 & 00 & 00.0\% & 00 & 00.0\% & 000 & 000 & 00.0\%\\
+0003年度 & 00 & 00.0\% & 00 & 00.0\% & 000 & 00 & 00.0\%\\
+0004年度 & 00 & 00.0\% & 00 & 00.0\% & 000 & 00 & 00.0\%\\
+0005年度 & 00 & 00.0\% & 00 & 00.0\% & 000 & 000 & 00.0\%\\
+0006年度 & 00 & 00.0\% & 00 & 00.0\% & 000 & 000 & 00.0\%\\
+累計 & 000 & 00.0\% & 000 & 00.0\% & 0,000 & 000 & 00.0\%\\ \bottomrule
+\end{tabular}
+\\[5pt]
+\tabcap{出典：「概要」（XXXX省，20XX，\url{http://www.l.u-tokyo.ac.jp/~slogos/}）を基に筆者作成．}
+\tabcap{注：国家試験の受験には，…… 必要であるため，0000年度からのデータを掲載している．}
+\end{table}
+
+\section{終わりに}
+\subsection{終わりの終わりに}
+ほげほげ
+
+ほげほげ
+
+ほげほげ
+
+ほげほげ
+
+ほげほげ
+
+ほげほげ
+
+ほげほげ
+
+ほげほげ
+
+ほげほげ
+
+ほげほげ
+
+ほげほげ
+
+ほげほげ
+
+
+\begin{figure}[!htbp]
+\centering
+\noindent
+\begin{minipage}{.47\textwidth}
+  \centering
+  \includegraphics[width=\linewidth]{example-image}
+  \caption*{図　通し番号を付けない図}
+\end{minipage}
+\hfill
+\begin{minipage}{.47\textwidth}
+  \centering
+  \includegraphics[width=\linewidth]{example-image}
+  \caption{通し番号有り}
+\end{minipage}
+\end{figure}
+%図表のキャプションにfootnoteを入れるにはcaptionを
+%\caption[図表タイトル]{図表タイトル\footnote{注の内容}}のようにする
+
+
+\begin{ackn} %謝辞
+ありがとうございました。
+\end{ackn}
+
+\begin{huki} %付記
+引用に際しては旧字体を新字体に直した。
+\end{huki}
+
+\theendnotes %注
+
+% 参考文献
+% 副題はハイフン6つ（------）、同一著者名はハイフン12つ(------------)、複数ページ番号はハイフン2つ（--）。
+% 洋書名の部分はイタリック体に（e.g. \textit{タイトル} または \emph{}）。
+\begin{references}
+Touraine, A., 1978, \emph{La voix et le Regard: Sociologie Permanente 1}, Paris: Seuil. (=1983, 梶田孝道訳『声とまなざし------社会運動と社会学』新泉社．)
+
+------------, 1978, \emph{La voix et le Regard: Sociologie Permanente 1}, Paris: Seuil. (=1983, 梶田孝道訳『声とまなざし------社会運動と社会学』新泉社．)
+\end{references}
+
+\credits %著者のひらがな名、所属、メール、査読者名の出力
+
+\makeenglishtitle %英文タイトル、サブタイトル、著者名、アブスト
+
+\end{document}

@@ -1,0 +1,318 @@
+---
+title: "水3 調査実習 第3回 2変数の関係: 散布図と相関"
+author: "Jihoon KIM (The University of Tokyo)"
+date: "5/28/2020"
+output:
+  html_document:
+    df_print: paged
+---
+
+## 前準備 
+
+### パッケージの読み込み
+用いるパッケージをロードします。もしインストールされていない場合、`install.packages("パッケージ名")`を使ってインストールする必要があります。
+
+```{r, message = FALSE}
+# library(car)
+# library(psych)
+# library(naniar)     
+# library(ggplot2)    
+# library(GGally)     
+# library(sjPlot)
+# library(sjmisc)
+# library(likert)
+# library(gmodels)
+# library(ggpubr)
+# library(Hmisc)
+# library(ppcor)
+# library(tidyverse)
+# library(datasauRus)
+
+# install.packages("tidyverse") # インストールが必要な場合
+```
+
+以下を実行することで、インストールされていないパッケージをすべてインストールし、ロードします。
+```{r, message = FALSE, warning = FALSE}
+#Sys.setlocale("LC_ALL","Japanese") # Macではこれは必要なく、警告が出ても無視してください。
+
+packages <- c('car', 'psych', 'naniar', 'ggplot2', 
+              'GGally', 'sjPlot', 'sjmisc', 'likert', 'gmodels', 
+              'ggpubr', 'Hmisc', 'ppcor', 'tidyverse', 'datasauRus', 'stargazer')
+
+for(p in packages){
+  if(!require(p, character.only = T)){
+    install.packages(p)
+  }
+  library(p, character.only = T)
+}
+```
+
+### データの読み込みと確認
+用いるデータを読み込み、その全体像を眺めます。
+データのパスはMacの場合右クリック→optionキーを押すことで、Windowsの場合はShiftを押しながら右クリックすることで簡単にコピーできます。
+
+```{r}
+kawasaki.raw <- read.csv("/Users/jhkim/Documents/Utokyo/2020 Summer/Wed_Social_Research/kawasaki.csv", encoding = "UTF-8")
+
+glimpse(kawasaki.raw)
+```
+
+全部で 2,457行（ケース）があり、変数は962列（個）入っていることがわかります。
+各変数の最小の数ケースのデータが表示され、そのタイプ（`factor`型か、`int`型か）が示されます。
+とりあえず`q1`の変数がちゃんと回答者の年齢を示すものとなっているかを確認しましょう。
+
+### 用いる変数の選択と欠損値の処理
+
+ここでは、以下の11個の変数 `(q1, q25_age, q2, q34, q35_3, q14_5, q14_6, q14_10, q15_8, q16_1, q18_5)`を対象とする分析を行います。
+
+  - `q1`: 回答者の年齢
+  - `q25_age`: 回答者の配偶者の年齢 
+  - `q2`: 回答者の性別
+  - `q34`: 最終学歴
+  - `q35_3`: 昨年一年間の世帯収入
+  - `q14`: 「一般的にいって、次のことがらは政府の責任だと思いますか。」
+    - `q14_2` : 「病人に医療を提供すること」
+    - `q14_5` : 「失業者でも世間並みの生活を送れるようにすること」
+    - `q14_6` : 「お金持ちの人と貧しい人のあいだの所得の差を縮めること」
+    - `q14_8`  : 「家の持てない人びとに世間並みの住居を提供すること」
+    - `q14_10` : 「育児・子育てを支援すること」
+    - `q14_11` : 「介護が必要な高齢者を支援すること」
+    - `q14_12` : 「介護が必要な高齢者を支援すること」
+  - `q15`: 「以下のような意見について、あなたはどう思いますか。」
+    - `q15_8`: 「子どもは地域のみんなで見守り、育てるべきである。」
+  - `q16`: 「外国人に関する以下のことがら について、あなたは賛成ですか、反対ですか。」
+    - `a16_1`: 「この地域に外国人が移住してくる」
+  - `q18`: 「あなたは、次のようなことがらをどのくらい行いますか。」
+    - `q18_5`: 「外国人と交流する（SNSも含む）」
+
+使う変数が決まったら、とりあえずそれを`select`で抜き出し、`summary()` してみましょう。
+
+`%>%`（パイプ）演算子は`tidyverse`に入っている`magrittr`パッケージによるもので、前のコマンドで処理したものを後ろの命令に引数として渡す機能をします。
+
+以下の例でいうと、`kawasaki.raw` データを `select()`に渡し、`select()`で処理したものをさらに`summary()`に渡しています。
+
+使わなくてもコードは書けますが、使うと作業の順番に沿った簡単でわかりやすいなコードが書けます。
+
+```{r}
+kawasaki.raw %>% 
+  select(q1, q25_age, q2, q34, q35_3, q14_5, 
+         q14_2, q14_5, q14_6, q14_8, q14_10, q14_11, q14_12, 
+         q15_8, q16_1, q18_5,
+         q6_1:q6_7, q33_1:q33_11) %>%
+  summary()
+```
+
+各変数に、9や99など、欠損値とすべき値が含まれていることがわかります。
+分析に入る前に、これらの欠損値を正しく処理します。
+
+以下では元データ`kawasaki.raw`から以上の11個の変数を選び出し(`select`)、それらの変数の名前をそれっぽく変えています（`rename`）。
+その後、`replace_with_na`で各変数の欠損値となるべき値を指定し、できたものを別のデータフレームである`kwsk`として保存しました。
+
+処理が終わったら、`summary()`してみると、欠損値が正しく処理され、意味ある値のみが含まれてそうなことがわかります。
+
+```{r}
+kwsk <- kawasaki.raw %>% 
+  dplyr::select(q1, q25_age, q2, q34, q35_3, 
+         q14_2, q14_5, q14_6, q14_8, q14_10, q14_11, q14_12,   
+         q15_8, q16_1, q18_5, q20, q33_1, q6_1:q6_7, q23_1:q23_7, q33_1:q33_11, q7, q3_y) %>% 
+  rename(age = q1, spouse.age = q25_age, 
+         female = q2, edu = q34,
+         income = q35_3,
+         q14_med = q14_2, q14_housing = q14_8, 
+         q14_jobless = q14_5, q14_inequ = q14_6, q14_child = q14_10,
+         q14_elderly = q14_11, q14_disabled = q14_12,
+         q15_community = q15_8, 
+         q16_pro_foreigners = q16_1, 
+         q18_familiarity = q18_5,
+         smoking = q20, 
+         residency = q3_y) %>% 
+  replace_with_na(replace = list(age = 999,
+                                 spouse.age = c(888, 999),
+                                 female = c(3, 9),
+                                 edu = c(9, 99),
+                                 income = 99,
+                                 smoking = 9,
+                                 residency = c(888, 999))) %>%
+  mutate_at(vars(starts_with(c("q6", "q33", "q23", "q14", "q15", "q16", "q18", "q7"))),
+            list(~ replace(., . %in% c(9), NA))) %>%
+  mutate(q14_sum = q14_med + q14_housing + q14_jobless + 
+			  q14_inequ + q14_child + q14_elderly + q14_disabled)
+
+
+summary(kwsk)
+		
+```
+
+### リコード
+使う変数が決まり、欠損処理がおわったら、他の値も目的に合うようにリコードします。
+
+以下では`female`を、男性を0、女性を1とするダミー変数しています。
+
+`income`は階級値を取りカテゴリーを数量化しています。
+なお、回帰分析等のため対数変換する場合、0が含まれていると計算ができないので(`log(0)`は定義されない)、全値に1をプラスします。
+
+`edu`は教育年数を値とする`edu.int`と、それぞれをカテゴリーとして扱う`edu.fct`として分けて作ってみました。
+実際の分析ではどっちもそこそこ使われます。
+`edu.fct`のようなfactor型変数の場合、回帰分析などでは自動的にダミー変数として扱われます。
+
+いろんなパッケージに`recode`関数があり、指定をしないと意図しなかった動きをする可能性があるので、ここでは`car`パッケージの`recode`関数、というふうに指定をしています(`car::recode()`)。
+
+```{r}
+kwsk$female <- car::recode(kwsk$female, 
+                                "1 = 0;
+                                 2 = 1")
+
+kwsk$income <- car::recode(kwsk$income, 
+                                "1 = 0;     2 = 50;
+                                 3 = 150;   4 = 250;
+                                 5 = 350;   6 = 450;
+                                 7 = 550;   8 = 650;
+                                 9 = 750;  10 = 850;
+                                11 = 950;  12 = 1050;
+                                13 = 1250; 14 = 3500;
+                                15 = 5000")
+
+kwsk$edu.int <- car::recode(kwsk$edu, 
+                                "1 = 9; 2 = 12; 
+                                 3 = 14; 4 = 16; 
+                                 5 = 9; 6 = 12;
+                                 7 = 14; 8 = 16")
+
+kwsk$smoking_cat <- car::recode(kwsk$smoking, 
+                                "1 = 1;
+                                2:hi = 2")
+
+
+kwsk$edu.fct <- car::recode(kwsk$edu, 
+                                "1 = 1; 2 = 2; 
+                                 3 = 3; 4 = 4; 
+                                 5 = 1; 6 = 2;
+                                 7 = 3; 8 = 4") %>% 
+                factor(., level = c(1, 2, 3, 4), 
+                          label = c("中学校", "高校", "短大・高専", "大学以上"))
+
+kwsk$relationship <- car::recode(kwsk$q7, 
+                                "1 = 4; 2 = 3; 
+                                 3 = 2; 4 = 1")
+
+
+
+with(kwsk, psych::alpha(cbind(q6_1, q6_2, q6_3, q6_4, q6_5, q6_6, q6_7)))
+with(kwsk, psych::alpha(cbind(q33_1, q33_2, q33_3, q33_4, q33_5, q33_6, q33_7, 
+                              q33_8, q33_9, q33_10, q33_11)))
+
+kwsk %<>% mutate(q6 = (q6_1 + q6_2 + q6_3 + q6_4 + q6_5 + q6_6 + q6_7)/7) %>%
+  mutate(q33 = (q33_1 + q33_2 + q33_3 + q33_4 + q33_5 + q33_6 + q33_7 + 
+                              q33_8 + q33_9 + q33_10 + q33_11)/11) %>%
+  mutate(q23 = (q23_1 + q23_2 + q23_3 + q23_4 + q23_5 + q23_6 + q23_7)/7) %>%
+  rename(belonging = q6_5, happiness = q33, health = q23)
+
+kwsk.test <- kwsk %>% select(belonging, happiness)
+
+#cronbach.alpha(cbind(q33_1, q33_2, q33_3, q33_4, q33_5, q33_6, q33_7, 
+#                              q33_8, q33_9, q33_10, q33_11))
+
+#?cronbach.alpha
+```
+
+リコード後は、元の変数とリコード後の変数のクロス表を作り、処理がちゃんとできているかを確認します。
+
+```{r}
+addmargins(table(kwsk$smoking_cat, kwsk$happiness, useNA="ifany"))		#度数分布を確認
+
+#kwsk$smoking <- factor(kwsk$smoking_cat)
+
+kwsk %>% filter(!is.na(smoking_cat), !is.na(happiness)) %>%
+  group_by(smoking_cat) %>% dplyr::summarize(m = mean(happiness))
+
+
+var.test(kwsk$happiness ~ kwsk$smoking_cat)		#分散の等質性を検定 
+	# 二つの標本の分散の等質ではない。
+
+t.test(kwsk$happiness[kwsk$smoking_cat == 1], kwsk$happiness[kwsk$smoking_cat == 2], var.equal = F)
+
+t.test(happiness ~ smoking_cat, data=kwsk, var.equal = FALSE)	#分散の等質性を仮定したt検定
+	#性別による幸福度の平均には有意な差が存在する (p<.01)	
+	##	  t01_2 <- t.test(q1 ~ f1, data=data01) ; t01_2$statistic ; t01_2$parameter    #等分散性を仮定しないt-testのt値
+```
+
+
+```{r}
+table(kwsk$female, kawasaki.raw$q2, useNA = "ifany")
+table(kwsk$income, kawasaki.raw$q35_3, useNA = "ifany")
+table(kwsk$edu.int, kawasaki.raw$q34, useNA = "ifany")
+table(kwsk$edu.fct, kawasaki.raw$q34, useNA = "ifany")
+```
+
+
+```{r}
+with(kwsk, cor(age, belonging, use = "complete.obs"))
+
+table(kwsk$belonging.by.age.mean)
+
+
+plot(jitter(belonging, 2) ~ age, data = kwsk, xlim = c(15, 100), ylim = c(0, 7)) +
+kwsk %>% filter(!is.na(age), !is.na(belonging)) %>% 
+  group_by(age) %>% 
+  summarize(belonging.mean = mean(belonging)) %>% 
+  points(., col = "orange", pch = 19, cex = 1) +
+abline(lm(belonging ~ age, data = kwsk), col = "red")
+
+```
+
+
+```{r, message = F, warning = F}
+
+library(GGally)
+kwsk.complete <- kwsk %>% select(belonging, age, female, income, edu.int, happiness, health, residency, relationship) %>%
+  na.omit 
+
+```
+
+```{r}
+ols1 <- lm(belonging ~ age, data = kwsk.complete)
+summary(ols1)
+
+ols2 <- lm(belonging ~ age + female + log(income + 1) + edu.int, data = kwsk.complete)
+summary(ols2)
+
+ols3 <- lm(belonging ~ age + female + log(income + 1) + edu.int + 
+             happiness + health, data = kwsk.complete)
+summary(ols3)
+
+ols4 <- lm(belonging ~ age + female + log(income + 1) + edu.int + 
+             happiness + health + residency + relationship, data = kwsk.complete)
+summary(ols4)
+
+stargazer(ols3, ols4, type="latex",
+          title="回帰結果", single.row=TRUE,
+          ci=FALSE, ci.level=0.95, omit.stat=c("f", "ser"))
+```
+
+
+## 課題
+1. データから自分が興味を持つ変数を2つから5つほど選び（それより多くなっても構わない）、適切な前処理（欠損値の処理、リコード、カテゴリー化など）をする。その変数の特性（すなわち、その変数が何をどのように測定したものであるか、カテゴリカルか量的か、順序尺度か比率尺度かなど）について、各変数ごとに短い説明を付ける。
+  
+    1. 記述統計（平均、分散、最大値、最小値）をつける。
+
+2. その変数の間に相関が存在するか、存在するならばそれはどのような関係によるものかを想像し、簡単な理論仮説・作業仮説を作る。
+
+3. 選択した変数の散布図を作り、共分散・ピアソン相関係数（またはKendall's tau や Spearman's rho）を求め、求めたグラフ・相関係数の解釈を短く述べること。相関係数には検定結果（p-value）をつける。散布図に回帰直線や、なんらかの近似線を描いても良い。
+
+    1. 必要だと判断した場合は散布図ではなく別のタイプのグラフを描いたり、相関を示すための別の指標を用いたりしても構わない。ただし、その場合は適切な説明を付け加える。
+
+4. 3で得られた結果と2で想像して立てた仮説の関係を短く考察する。求めた相関係数は実際のデータに見られる関係を適切に表しているか。それらの変数の間には本当に相関があったと言えるか。第3要因や偶然による疑似相関ではないか。もしそうならば、考慮に入れるべき（統制すべき）第3要因としては何があり得るか。
+
+締め切り：5月31日23時59分
+
+提出場所：ITC-LMS
+
+形式上の注意：
+
+1. 名前と学籍番号をつける。
+
+2. すべての表・図には適切なタイトルをつける。
+
+3. .doc, .docx, または .pdf 形式で提出する。
+
+4. 自分が用いたコードを添付すること。

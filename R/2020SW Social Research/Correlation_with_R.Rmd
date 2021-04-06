@@ -1,0 +1,736 @@
+---
+title: "水3 調査実習 第3回 2変数の関係: 散布図と相関"
+author: "Jihoon KIM (The University of Tokyo)"
+date: "5/28/2020"
+output:
+  html_document:
+    df_print: paged
+---
+
+## 前準備 
+
+### パッケージの読み込み
+用いるパッケージをロードします。もしインストールされていない場合、`install.packages("パッケージ名")`を使ってインストールする必要があります。
+
+```{r, message = FALSE}
+# library(car)
+# library(psych)
+# library(naniar)     
+# library(ggplot2)    
+# library(GGally)     
+# library(sjPlot)
+# library(sjmisc)
+# library(likert)
+# library(gmodels)
+# library(ggpubr)
+# library(Hmisc)
+# library(ppcor)
+# library(tidyverse)
+# library(datasauRus)
+
+# install.packages("tidyverse") # インストールが必要な場合
+```
+
+以下を実行することで、インストールされていないパッケージをすべてインストールし、ロードします。
+```{r, message = FALSE, warning = FALSE}
+Sys.setlocale("LC_ALL","Japanese") # Macではこれは必要なく、警告が出ても無視してください。
+
+packages <- c('car', 'psych', 'naniar', 'ggplot2', 
+              'GGally', 'likert', 'gmodels', 
+              'ggpubr', 'Hmisc', 'ppcor', 'tidyverse', 'datasauRus')
+
+for(p in packages){
+  if(!require(p, character.only = T)){
+    install.packages(p)
+  }
+  library(p, character.only = T)
+}
+```
+
+### データの読み込みと確認
+用いるデータを読み込み、その全体像を眺めます。
+データのパスはMacの場合右クリック→optionキーを押すことで、Windowsの場合はShiftを押しながら右クリックすることで簡単にコピーできます。
+
+```{r}
+kawasaki.raw <- read.csv("/Users/jhkim/Documents/Utokyo/2020 Summer/Wed_Social_Research/kawasaki.csv", encoding = "UTF-8")
+
+glimpse(kawasaki.raw)
+```
+
+全部で 2,457行（ケース）があり、変数は962列（個）入っていることがわかります。
+各変数の最小の数ケースのデータが表示され、そのタイプ（`factor`型か、`int`型か）が示されます。
+とりあえず`q1`の変数がちゃんと回答者の年齢を示すものとなっているかを確認しましょう。
+
+
+```{r}
+kawasaki0610<-kawasaki.raw %>%
+  dplyr::select(q1,q4_j,q7,q15_1,q15_2,q15_3,q15_4,q23_1,q23_2,q23_5) %>%
+  rename(age=q1,job=q4_j,regional=q7,q15_hope=q15_1,
+         q15_school=q15_2,q15_failure=q15_3,q15_fame=q15_4,
+         illness=q23_1,aging=q23_2,depression=q23_5) %>%
+  replace_with_na(replace=list(age=999,job=c(8,9),regional=9,
+                               q15_hope=9,q15_school=9,q15_failure=9,
+                               q15_fame=9,illness=9,aging=9,depression=9))
+kawasaki0610$hopeless<-car::recode(kawasaki0610$q15_hope,"5=1;4=2;3=3;2=4;1=5")
+kawasaki0610<-mutate(kawasaki0610,expectation=+q15_failure+q15_school+q15_fame-2)
+
+kawasaki0610$agegroup<- car::recode(kawasaki0610$age,
+                                    "18:39=1;40:59=2;60:79=3;80:100=4")
+
+kawasaki0610$agegroup <- factor(kawasaki0610$agegroup, level = c(1, 2, 3, 4),
+                                label = c("若年層","中年層","高齢層","後期高齢層"))
+
+kawasaki0610$depression <- factor(kawasaki0610$depression, level = c(1, 2, 3, 4, 5),
+                                label = c("微", "少し", "普通", "結構", "とても"))
+
+###クロス表作成
+##table1_add(agegroup-depression) table1_prop_add(table1の行パーセント)
+table1<-table(kawasaki0610$agegroup,kawasaki0610$depression)
+table1_add<-addmargins(table1)
+table1_add
+table1_prop<-prop.table(table1,1)*100
+table1_prop_add<-round(addmargins(table1_prop,2),2)
+table1_prop_add
+table1_df<-as.data.frame(table1_prop)
+
+table1_df
+kawasaki0610$depression
+
+
+
+barplot(t(table1_prop), beside=TRUE,xlab = "agegroup", ylab = "depression(percent)",
+        col=c("red", "blue", "yellow", "green","purple"),ylim=c(0,50))
+legend("topright", legend = c(1,2,3,4,5),fill=c("red", "blue", "yellow", "green","purple"))
+
+```
+
+```{r}
+
+kawasaki0610$depression <- factor(kawasaki0610$depression, level = c(1, 2, 3, 4, 5),
+                                label = c("微", "少し", "普通", "結構", "とても"))
+
+data.frame(table1_df2) %>%
+        ggplot(.,)+
+        aes(x = n, group = agegroup) +
+        geom_bar()+
+        labs(x="鬱傾向")+
+        facet_wrap(~ agegroup)+
+        scale_y_continuous(labels = scales::percent) +
+        theme_bw(base_family = "HiraKakuProN-W6",  base_size = 9) 
+
+ggplot(table1_df2, aes(x = depression, group = agegroup)) + 
+  geom_bar(aes(y = prop, fill = depression), stat = "identity") +
+  scale_y_continuous(labels=scales::percent) +
+          ylab("proportion") +
+          facet_wrap(~agegroup) +
+        theme_bw(base_family = "HiraKakuProN-W6",  base_size = 9) 
+
+
+table1_df
+ggplot(table1_df, aes(x = Var2, group = Var1)) + 
+  geom_bar(aes(y = Freq, fill = factor(Var2)), stat = "identity") +
+  scale_y_continuous(labels=scales::percent) +
+          ylab("proportion") +
+          facet_wrap(~Var1) +
+        theme_bw(base_family = "HiraKakuProN-W6",  base_size = 9) 
+
+table1_df2 <- kawasaki0610 %>% filter(!is.na(agegroup), !is.na(depression)) %>%
+                          group_by(agegroup, depression) %>%
+  summarize(n = n()) %>%
+  mutate(prop = n / sum(n))
+
+table1_df2
+
+
+ggplot(table1_df2)  
+```
+
+
+### 用いる変数の選択と欠損値の処理
+
+ここでは、以下の11個の変数 `(q1, q25_age, q2, q34, q35_3, q14_5, q14_6, q14_10, q15_8, q16_1, q18_5)`を対象とする分析を行います。
+
+  - `q1`: 回答者の年齢
+  - `q25_age`: 回答者の配偶者の年齢 
+  - `q2`: 回答者の性別
+  - `q34`: 最終学歴
+  - `q35_3`: 昨年一年間の世帯収入
+  - `q14`: 「一般的にいって、次のことがらは政府の責任だと思いますか。」
+    - `q14_2` : 「病人に医療を提供すること」
+    - `q14_5` : 「失業者でも世間並みの生活を送れるようにすること」
+    - `q14_6` : 「お金持ちの人と貧しい人のあいだの所得の差を縮めること」
+    - `q14_8`  : 「家の持てない人びとに世間並みの住居を提供すること」
+    - `q14_10` : 「育児・子育てを支援すること」
+    - `q14_11` : 「介護が必要な高齢者を支援すること」
+    - `q14_12` : 「介護が必要な高齢者を支援すること」
+  - `q15`: 「以下のような意見について、あなたはどう思いますか。」
+    - `q15_8`: 「子どもは地域のみんなで見守り、育てるべきである。」
+  - `q16`: 「外国人に関する以下のことがら について、あなたは賛成ですか、反対ですか。」
+    - `a16_1`: 「この地域に外国人が移住してくる」
+  - `q18`: 「あなたは、次のようなことがらをどのくらい行いますか。」
+    - `q18_5`: 「外国人と交流する（SNSも含む）」
+
+使う変数が決まったら、とりあえずそれを`select`で抜き出し、`summary()` してみましょう。
+
+`%>%`（パイプ）演算子は`tidyverse`に入っている`magrittr`パッケージによるもので、前のコマンドで処理したものを後ろの命令に引数として渡す機能をします。
+
+以下の例でいうと、`kawasaki.raw` データを `select()`に渡し、`select()`で処理したものをさらに`summary()`に渡しています。
+
+使わなくてもコードは書けますが、使うと作業の順番に沿った簡単でわかりやすいなコードが書けます。
+
+```{r}
+kawasaki.raw %>% 
+  select(q1, q25_age, q2, q34, q35_3, q14_5, 
+         q14_2, q14_5, q14_6, q14_8, q14_10, q14_11, q14_12, 
+         q15_8, q16_1, q18_5) %>%
+  summary()
+```
+
+各変数に、9や99など、欠損値とすべき値が含まれていることがわかります。
+分析に入る前に、これらの欠損値を正しく処理します。
+
+以下では元データ`kawasaki.raw`から以上の11個の変数を選び出し(`select`)、それらの変数の名前をそれっぽく変えています（`rename`）。
+その後、`replace_with_na`で各変数の欠損値となるべき値を指定し、できたものを別のデータフレームである`kwsk`として保存しました。
+
+処理が終わったら、`summary()`してみると、欠損値が正しく処理され、意味ある値のみが含まれてそうなことがわかります。
+
+```{r}
+kwsk <- kawasaki.raw %>% 
+  dplyr::select(q1, q25_age, q2, q34, q35_3, 
+         q14_2, q14_5, q14_6, q14_8, q14_10, q14_11, q14_12,   
+         q15_8, q16_1, q18_5, q20, q33_1) %>% 
+  rename(age = q1, spouse.age = q25_age, 
+         female = q2, edu = q34,
+         income = q35_3,
+         q14_med = q14_2, q14_housing = q14_8, 
+         q14_jobless = q14_5, q14_inequ = q14_6, q14_child = q14_10,
+         q14_elderly = q14_11, q14_disabled = q14_12,
+         q15_community = q15_8, 
+         q16_pro_foreigners = q16_1, 
+         q18_familiarity = q18_5,
+         smoking = q20,
+         happiness = q33_1) %>% 
+  replace_with_na(replace = list(age = 999,
+                                 spouse.age = c(888, 999),
+                                 female = c(3, 9),
+                                 edu = c(9, 99),
+                                 income = 99,
+                                 q14_med = 9,
+                                 q14_housing = 9,
+                                 q14_jobless = 9,
+                                 q14_inequ = 9,
+                                 q14_child = 9,
+                                 q14_elderly = 9,
+                                 q14_disabled = 9,
+                                 q15_community = 9,
+                                 q16_pro_foreigners = 9,
+                                 q18_familiarity = 9,
+                                 smoking = 9,
+                                 happiness = 9)) %>%
+  mutate(q14_sum = q14_med + q14_housing + q14_jobless + 
+			  q14_inequ + q14_child + q14_elderly + q14_disabled)
+
+summary(kwsk)
+		
+```
+
+### リコード
+使う変数が決まり、欠損処理がおわったら、他の値も目的に合うようにリコードします。
+
+以下では`female`を、男性を0、女性を1とするダミー変数しています。
+
+`income`は階級値を取りカテゴリーを数量化しています。
+なお、回帰分析等のため対数変換する場合、0が含まれていると計算ができないので(`log(0)`は定義されない)、全値に1をプラスします。
+
+`edu`は教育年数を値とする`edu.int`と、それぞれをカテゴリーとして扱う`edu.fct`として分けて作ってみました。
+実際の分析ではどっちもそこそこ使われます。
+`edu.fct`のようなfactor型変数の場合、回帰分析などでは自動的にダミー変数として扱われます。
+
+いろんなパッケージに`recode`関数があり、指定をしないと意図しなかった動きをする可能性があるので、ここでは`car`パッケージの`recode`関数、というふうに指定をしています(`car::recode()`)。
+
+```{r}
+kwsk$female <- car::recode(kwsk$female, 
+                                "1 = 0;
+                                 2 = 1")
+
+kwsk$income <- car::recode(kwsk$income, 
+                                "1 = 0;     2 = 50;
+                                 3 = 150;   4 = 250;
+                                 5 = 350;   6 = 450;
+                                 7 = 550;   8 = 650;
+                                 9 = 750;  10 = 850;
+                                11 = 950;  12 = 1050;
+                                13 = 1250; 14 = 3500;
+                                15 = 5000")
+
+kwsk$edu.int <- car::recode(kwsk$edu, 
+                                "1 = 9; 2 = 12; 
+                                 3 = 14; 4 = 16; 
+                                 5 = 9; 6 = 12;
+                                 7 = 14; 8 = 16")
+
+kwsk$smoking_cat <- car::recode(kwsk$smoking, 
+                                "1 = 1;
+                                2:hi = 2")
+
+
+kwsk$edu.fct <- car::recode(kwsk$edu, 
+                                "1 = 1; 2 = 2; 
+                                 3 = 3; 4 = 4; 
+                                 5 = 1; 6 = 2;
+                                 7 = 3; 8 = 4") %>% 
+                factor(., level = c(1, 2, 3, 4), 
+                          label = c("中学校", "高校", "短大・高専", "大学以上"))
+```
+
+リコード後は、元の変数とリコード後の変数のクロス表を作り、処理がちゃんとできているかを確認します。
+
+```{r}
+addmargins(table(kwsk$smoking_cat, kwsk$happiness, useNA="ifany"))		#度数分布を確認
+
+#kwsk$smoking <- factor(kwsk$smoking_cat)
+
+kwsk %>% filter(!is.na(smoking_cat), !is.na(happiness)) %>%
+  group_by(smoking_cat) %>% dplyr::summarize(m = mean(happiness))
+
+
+var.test(kwsk$happiness ~ kwsk$smoking_cat)		#分散の等質性を検定 
+	# 二つの標本の分散の等質ではない。
+
+t.test(kwsk$happiness[kwsk$smoking_cat == 1], kwsk$happiness[kwsk$smoking_cat == 2], var.equal = F)
+
+t.test(happiness ~ smoking_cat, data=kwsk, var.equal = FALSE)	#分散の等質性を仮定したt検定
+	#性別による幸福度の平均には有意な差が存在する (p<.01)	
+	##	  t01_2 <- t.test(q1 ~ f1, data=data01) ; t01_2$statistic ; t01_2$parameter    #等分散性を仮定しないt-testのt値
+```
+
+
+```{r}
+table(kwsk$female, kawasaki.raw$q2, useNA = "ifany")
+table(kwsk$income, kawasaki.raw$q35_3, useNA = "ifany")
+table(kwsk$edu.int, kawasaki.raw$q34, useNA = "ifany")
+table(kwsk$edu.fct, kawasaki.raw$q34, useNA = "ifany")
+```
+
+
+## 2変数の関係をプロットする
+
+```{r}
+plot(kwsk$age, kwsk$spouse.age)
+
+kwsk %>% select(age, spouse.age) %>% plot()
+```
+
+```{r}
+kwsk %>% select(age, spouse.age, female, edu.int, income) %>% 
+  pairs()
+```
+
+```{r, message = F, warning = F}
+kwsk %>% select(age, spouse.age, female, edu.int, income) %>% 
+  ggpairs() 
+```
+
+## 順序尺度の扱い
+
+```{r}
+plot(kwsk$q14_child, kwsk$q14_inequ) # 意味無し
+```
+
+### 1変数の視覚化
+
+リカート尺度をまずは1変数ずつ視覚化します。
+自分で分析するときこういったものを使うことはあまりないと思われますが、
+調査協力者のための調査報告書などを書くときは結構便利です。
+
+まずデータ`kwsk`から関心のある変数をさらに取り出し、それにラベルを付け、`kwsk.factors`に格納します。
+ラベルに含まれてる`\n`は「エスケープシーケンス」と呼ばれるものの一つで、改行を指示するものです。
+
+```{r}
+kwsk.factors <- kwsk %>% select(q14_med, q14_housing, q14_jobless, 
+                                q14_inequ, q14_child, q14_elderly, q14_disabled) %>% 
+  mutate_all(list(~factor(., level = c(1,2,3,4), 
+                             label = c("明らかに \n 政府責任ではない", "どちらかといえば \n 政府責任ではない", 
+                                       "どちらかといえば \n 政府責任", "明らかに \n 政府責任"))))
+
+summary(kwsk.factors)
+```
+
+`likert`パッケージを用いたプロットを書きます。そのためには、以上でfactor型に変換してラベルをつけたものを
+`likert()`でさらに変換し格納しておく必要があります。
+
+```{r}
+lik <- likert(kwsk.factors) 
+
+plot(lik, type = "bar", centered = FALSE) + 
+  ggtitle("hoge") +
+  theme_bw(base_family = "HiraKakuProN-W6",  base_size = 9) 
+# Windows ユーザーの場合、HiraKakuProN-W6 を Meiryo や Osaka などにすること。
+
+plot(lik,
+     type="heat",
+     low.color = "white",
+     high.color = "blue",
+     text.color = "black",
+     text.size = 3,
+     wrap = 50) +
+  theme_bw(base_family = "HiraKakuProN-W6",  base_size = 9)
+```
+
+`likert`パッケージではなく、`sjPlot`パッケージで書くことも可能です。
+この場合、factor型に変換したデータフレームをそのまま使います。
+`show.prc.sign = TRUE`などの各オプションが何を意味するのかは、`?plot_likert`命令で確認してみてください。
+
+```{r}
+plot_likert(
+  kwsk.factors,
+  title = "example",
+  grid.range = c(1.2, 1,2),
+  expand.grid = FALSE,
+  values = "sum.outside",
+  show.prc.sign = TRUE) + 
+  theme_bw(base_family = "HiraKakuProN-W6", base_size = 9)
+```
+
+
+### 2つの順序尺度の関係の視覚化
+#### クロステーブルから
+
+2つ以上のカテゴリカル変数の関係を見るには、第2回の講義で扱ったクロス表を用いるのが普通です。
+
+```{r}
+##### 1. R baseによるクロス表
+xt <- with(kwsk, table(q14_child, q14_inequ), useNA = "ifany")
+round(prop.table(xt), 3)
+addmargins(xt)
+
+##### 2. R base (stats) によるクロス表
+xtabs(~ q14_child + q14_inequ, data = kwsk)
+
+##### 3. gmodels パッケージによるクロス表とχ二乗検定
+CrossTable(kwsk$q14_child, kwsk$q14_inequ, prop.chisq = F, chisq = T)
+```
+
+ただし、量が膨大になると数字だけを追うのは難しくなるので、場合によっては視覚化が必要になります。
+
+#### Jittered Plot 
+
+`jitter()`は元の値にランダムなノイズを加えます。
+見た目がいいとはとても言えませんが、だいたいどこに値が集中しているかは分かります。
+
+```{r}
+#### Jittered Plot
+plot(jitter(kwsk$q14_child, 2), jitter(kwsk$q14_inequ, 2))
+```
+
+jittered plotの他にも様々な方法がありますが、ここではballoonプロットを紹介します。
+
+#### Balloon Plot
+
+ここでは`ggpubr`パッケージと`ggballoonplot()`を用います。
+2つの変数を選び、`table()`にしたものを`data.frame()`でデータフレーム形式にしたうえで、`ggballoonplot()`に読み込ませます。
+
+```{r}
+#### Balloon Plot
+ggballoon <- data.frame(table(child = kwsk.factors$q14_child, 
+                              inequ = kwsk.factors$q14_inequ))
+
+ggballoonplot(ggballoon, x = "child", y = "inequ", 
+              fill = "Freq",
+              ggtheme = theme_bw()) + 
+              ggtitle("タイトル") +
+              xlab("子供の養育") +
+              ylab("不平等是正") +
+              scale_fill_viridis_c(option = "C") +
+              theme_bw(base_family = "HiraKakuProN-W6", base_size = 9)
+```
+
+## 分散・共分散・ピアソン相関係数
+
+### 分散・共分散・ピアソン相関係数を計算してみる
+
+以下では、共分散と標準偏差、ピアソン相関係数をいちいち計算して求めてみます。
+
+相関係数の一般的な計算式はデータに欠損がないことを前提としていますが、
+実際のデータには欠損が入ってるxとyのペアが多く、その欠損値をどう処理するかによって計算方法が少しずつ変わってきます。
+ここでは欠損値（NA）をすべて取り除いたケースのみで構成されたデータフレームをあえて作ることで、
+手計算でも値が求まるようにします。
+
+興味のある`age`と`spouse.age`で、両方にNAを含まないケースの数は`psych`パッケージの`pairwiseCount()`で簡単に数えられます。
+
+```{r}
+pairwiseCount(kwsk$age, kwsk$spouse.age) # kwskで、NAを含むペアを除くと n = 1640
+```
+
+`kwsk`から`age`と`spouse.age`を選びだし、その変数において一個でもNAが含まれているケースをすべて削除（listwise deletion）し、欠損値のないデータフレーム（`kwsk.ages.complete`）を作ります。
+
+```{r}
+kwsk.ages.complete <- kwsk %>% 
+  select(age, spouse.age, income) %>% na.omit
+```
+
+処理前と処理後のデータのケース数を比較すると、以下のようになります。
+
+```{r}
+nrow(kwsk) # 元のデータにはケースが2457個（行）だったが、
+nrow(kwsk.ages.complete) # 削除後は1640ケースのみになっている。これらのケースは欠損値を一つも含まない。
+n <- 1640 # pairwiseCount()で求めた値と同じ
+```
+
+式に沿って、不偏共分散と不偏標準偏差を求めます。
+
+$$
+s_{x y} = \frac{1}{n-1} \sum_{i=1}^{n}\left(x_{i}-\bar{x}\right)\left(y_{i}-\bar{y}\right)
+$$
+
+
+$$
+s_{x}=\sqrt{\frac{1}{n-1} \sum_{i=1}^{n}\left(x_{i}-\bar{x}\right)^{2}}
+$$
+
+
+```{r}
+# 不偏共分散 s_xy
+s_xy <- (1/(n - 1))*sum((kwsk.ages.complete$age - mean(kwsk.ages.complete$age))*
+               (kwsk.ages.complete$spouse.age - mean(kwsk.ages.complete$spouse.age))); s_xy
+
+# 不偏標準偏差 s_xとs_y
+s_x <- sqrt((1/(n - 1))*sum((kwsk.ages.complete$age - mean(kwsk.ages.complete$age))^2)); s_x
+
+s_y <- sqrt((1/(n - 1))*sum((kwsk.ages.complete$spouse.age - mean(kwsk.ages.complete$spouse.age))^2)); s_y
+
+
+income_hensa <- (kwsk.ages.complete$income - mean(kwsk.ages.complete$income))
+
+age_hensa <- (kwsk.ages.complete$age - mean(kwsk.ages.complete$age))
+
+shapiro.test(income_hensa * age_hensa)
+
+hist(income_hensa * age_hensa)
+
+library(MVN)
+
+kwsk.ages.complete_mvn <- mvn(kwsk.ages.complete, multivariatePlot = "qq")
+
+kwsk.ages.complete_mvn
+
+shapiro.test(kwsk.ages.complete$age)
+
+cor(cbind(kwsk$q14_child, kwsk$q14_inequ, kwsk$q14_jobless, kwsk$income), method = "pearson", use = "complete.obs")
+cor(cbind(kwsk$q14_child, kwsk$q14_inequ, kwsk$q14_jobless, kwsk$income), method = "spearman", use = "complete.obs")
+cor(cbind(kwsk$q14_child, kwsk$q14_inequ, kwsk$q14_jobless, kwsk$income), method = "kendall", use = "complete.obs")
+
+
+cor(cbind(kwsk$age, kwsk$spouse.age, log(kwsk$income+1)), method = "pearson", use = "complete.obs")
+cor(cbind(kwsk$age, kwsk$spouse.age, log(kwsk$income+1)), method = "spearman", use = "complete.obs")
+cor(cbind(kwsk$age, kwsk$spouse.age, log(kwsk$income+1)), method = "kendall", use = "complete.obs")
+
+cor(cbind(kwsk$age, kwsk$spouse.age, (kwsk$income)), method = "pearson", use = "complete.obs")
+cor(cbind(kwsk$age, kwsk$spouse.age, (kwsk$income)), method = "spearman", use = "complete.obs")
+cor(cbind(kwsk$age, kwsk$spouse.age, (kwsk$income)), method = "kendall", use = "complete.obs")
+
+cor(cbind(kwsk$age, kwsk$spouse.age, kwsk$income), method = "pearson", use = "complete.obs")
+cor(cbind(kwsk$age, kwsk$spouse.age, log(kwsk$income+1)), method = "pearson", use = "complete.obs")
+cor(cbind(kwsk$age, kwsk$spouse.age, (kwsk$income)^2), method = "pearson", use = "complete.obs")
+
+cor(cbind(kwsk$age, kwsk$spouse.age, kwsk$income), method = "kendall", use = "complete.obs")
+cor(cbind(kwsk$age, kwsk$spouse.age, log(kwsk$income+1)), method = "kendall", use = "complete.obs")
+cor(cbind(kwsk$age, kwsk$spouse.age, (kwsk$income)^2), method = "kendall", use = "complete.obs")
+
+plot(log(income+1) ~ age, data = kwsk.ages.complete)
+mean.point <- with(kwsk.ages.complete, ave(log(income+1), age, FUN = mean))
+points(mean.point ~ age, data = kwsk.ages.complete, col = "red")
+
+```
+
+求めた値は、共分散と標準偏差を求める命令である`cov()`, `sd()`で求めた値と一致します。
+```{r}
+cov(kwsk.ages.complete$age, kwsk.ages.complete$spouse.age)
+sd(kwsk.ages.complete$age)
+sd(kwsk.ages.complete$spouse.age)
+```
+
+求めた値で、相関係数を計算します。
+
+$$
+r=\frac{s_{x y}}{\sqrt{s_{x}^{2} s_{y}^{2}}}=\frac{s_{x y}}{s_{x} s_{y}}
+$$
+
+```{r}
+(s_xy) / ((s_x)*(s_y))
+```
+
+求めた値は、`cor()`で求めた相関係数と一致します。
+なお、欠損処理する前の元のデータ`kwsk`から"NAのない組み合わせのみ"を用いて相関係数を求めた場合とも一致します。
+```{r}
+cor(kwsk.ages.complete$age, kwsk.ages.complete$spouse.age)
+
+cor(kwsk$age, kwsk$spouse.age, use = "pairwise.complete.obs")
+```
+
+## ピアソン相関係数の性質
+
+### 単回帰との関係
+```{r}
+r <- cor(kwsk$spouse.age, kwsk$age, use = "pairwise.complete.obs")
+r^2 # 0.907495
+```
+
+```{r}
+lm <- lm(spouse.age ~ age, data = kwsk) # R-squared: 0.9075
+summary(lm)
+```
+
+```{r}
+cor(lm$model[, 'spouse.age'], lm$fitted.values, use = "pairwise.complete.obs")^2
+
+summary(lm) # Y hat（推定されたY）とYのピアソン相関係数の二乗はR^2に一致する。
+```
+
+### 非線形データと相関係数
+
+#### Anscombe's Quartet 
+```{r}
+desc.tab <- psych::describe(anscombe, na.rm = TRUE,
+                          interp = TRUE,
+                          skew = TRUE,
+                          ranges = TRUE) # 変数別平均、標準偏差は同一。
+as.data.frame(desc.tab)
+```
+
+```{r}
+cor(anscombe$x1, anscombe$y1) # r = 0.8164
+cor(anscombe$x2, anscombe$y2) # r = 0.8162
+cor(anscombe$x3, anscombe$y3) # r = 0.8163
+cor(anscombe$x4, anscombe$y4) # r = 0.8165
+``` 
+
+```{r}
+{
+  par(mfrow=c(2, 2))
+  plot(anscombe$x1, anscombe$y1) # r = -0.5
+  abline(lm(y1 ~ x1, data = anscombe), col = "red") 
+  
+  plot(anscombe$x2, anscombe$y2) # r = 0.8163
+  abline(lm(y2 ~ x2, data = anscombe), col = "red") 
+  
+  plot(anscombe$x3, anscombe$y3) # r = 0.8165
+  abline(lm(y3 ~ x3, data = anscombe), col = "red")
+  
+  plot(anscombe$x4, anscombe$y4) # r = 0.8165
+  abline(lm(y4 ~ x4, data = anscombe), col = "red")
+  par(mfrow=c(1, 1))
+}
+```
+
+```{r, message = F}
+ggpairs(anscombe)
+```
+
+#### Datasaurus
+
+```{r}
+datasaurus_dozen %>% 
+  group_by(dataset) %>% 
+  summarize(
+    mean_x = mean(x),
+    mean_y = mean(y),
+    sd_x = sd(x),
+    sd_y = sd(y),
+    cor_xy  = cor(x, y)) # 記述統計量はどれも似ている。
+```
+```{r}
+ggplot(datasaurus_dozen, aes(x = x, y = y, colour = dataset)) +
+  geom_point() +
+  theme_void() +
+  theme(legend.position = "none") +
+  facet_wrap( ~ dataset, ncol = 3) 
+```
+
+## 相関係数の検定
+
+### ピアソン相関係数のt検定
+```{r}
+#### t-test
+cor.test(kwsk$age, kwsk$spouse.age, method = "pearson")
+
+
+#### 帰無仮説（H0): rho = 0である（2つの変数の母相間はゼロである）。
+#### 対立仮説（H1): rho = 0ではない（2つの変数は母相間はゼロではない）。
+```
+
+### 相関行列とt検定
+```{r, message = F, warning = F}
+#### correlation matrix
+kwsk %>% select(., age, spouse.age, income) %>% 
+  cor(., method = "pearson", use = "pairwise.complete.obs") %>% 
+  round(., 5)
+
+kwsk %>% select(., age, spouse.age, income) %>% 
+  ggpairs()
+```
+
+
+```{r}
+kwsk %>% select(., age, spouse.age, income) %>% 
+  as.matrix() %>% rcorr(., type = "pearson")
+```
+
+## その他の相関係数
+
+### Kendall's Tau
+```{r}
+cor(kwsk$q14_child, kwsk$q14_jobless, method = "kendall", use = "pairwise.complete.obs")
+cor.test(kwsk$q14_child, kwsk$q14_jobless, method = "kendall")
+```
+
+`factor`型変数は`mutate`と`as.numeric()`で数値型に戻します。
+
+```{r}
+kwsk %>% select(., age, income, edu.fct, q14_sum) %>% 
+  mutate(edu.fct = as.numeric(edu.fct)) %>% 
+  cor(., method = "kendall", use = "pairwise.complete.obs") %>% 
+  round(., 5)
+```
+
+
+### Spearman's rho
+```{r}
+cor(kwsk$q14_jobless, kwsk$q14_inequ, method = "spearman", use = "pairwise.complete.obs")
+cor.test(kwsk$q14_jobless, kwsk$q14_inequ, method = "spearman", use = "pairwise.complete.obs")
+```
+
+```{r}
+kwsk %>% select(., age, income, edu.fct, q14_sum) %>% 
+  mutate(edu.fct = as.numeric(edu.fct)) %>%  
+  cor(., method = "spearman", use = "complete.obs") %>% 
+  round(., 5)
+```
+
+
+## 課題
+1. データから自分が興味を持つ変数を2つから5つほど選び（それより多くなっても構わない）、適切な前処理（欠損値の処理、リコード、カテゴリー化など）をする。その変数の特性（すなわち、その変数が何をどのように測定したものであるか、カテゴリカルか量的か、順序尺度か比率尺度かなど）について、各変数ごとに短い説明を付ける。
+  
+    1. 記述統計（平均、分散、最大値、最小値）をつける。
+
+2. その変数の間に相関が存在するか、存在するならばそれはどのような関係によるものかを想像し、簡単な理論仮説・作業仮説を作る。
+
+3. 選択した変数の散布図を作り、共分散・ピアソン相関係数（またはKendall's tau や Spearman's rho）を求め、求めたグラフ・相関係数の解釈を短く述べること。相関係数には検定結果（p-value）をつける。散布図に回帰直線や、なんらかの近似線を描いても良い。
+
+    1. 必要だと判断した場合は散布図ではなく別のタイプのグラフを描いたり、相関を示すための別の指標を用いたりしても構わない。ただし、その場合は適切な説明を付け加える。
+
+4. 3で得られた結果と2で想像して立てた仮説の関係を短く考察する。求めた相関係数は実際のデータに見られる関係を適切に表しているか。それらの変数の間には本当に相関があったと言えるか。第3要因や偶然による疑似相関ではないか。もしそうならば、考慮に入れるべき（統制すべき）第3要因としては何があり得るか。
+
+締め切り：5月31日23時59分
+
+提出場所：ITC-LMS
+
+形式上の注意：
+
+1. 名前と学籍番号をつける。
+
+2. すべての表・図には適切なタイトルをつける。
+
+3. .doc, .docx, または .pdf 形式で提出する。
+
+4. 自分が用いたコードを添付すること。
