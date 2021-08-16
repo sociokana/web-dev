@@ -4,9 +4,9 @@
 number = int(input(""))
 
 if number % 2 != 1:
-    if (number >= 2) or (n <= 5):
+    if (number >= 2) or (number <= 5):
         print("Not Weird")
-    elif (number >= 6) or (n <= 20):
+    elif (number >= 6) or (number <= 20):
         print("Weird")
     elif number > 20:
         print("Not Weird")
@@ -26,3 +26,5 @@ print(a * b)
 
 print(a//b)
 print(a/b)
+
+#%% 
